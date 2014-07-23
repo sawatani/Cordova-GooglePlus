@@ -1,0 +1,24 @@
+Node version: v0.10.26
+
+Cordova version: 0.21.3
+
+Config.xml file: 
+
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="org.fathens.cordova.googleplus" version="0.0.1" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>GooglePlus</name>
+    <description>
+        A sample Apache Cordova application that responds to the deviceready event.
+    </description>
+    <author email="dev@cordova.apache.org" href="http://cordova.io">
+        Apache Cordova Team
+    </author>
+    <content src="index.html" />
+    <access origin="*" />
+</widget>
+
+
+No Plugins Currently Installed
+
+No Platforms Currently Installed
+
