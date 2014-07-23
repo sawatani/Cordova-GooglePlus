@@ -19,19 +19,70 @@
 
 package org.fathens.cordova.googleplus;
 
-import android.os.Bundle;
-import org.apache.cordova.*;
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaArgs;
+import org.apache.cordova.CordovaInterface;
+import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.CordovaWebView;
+import org.json.JSONException;
 
-public class GooglePlus extends CordovaActivity 
-{
+import android.content.IntentSender.SendIntentException;
+import android.os.Bundle;
+import android.util.Log;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
+import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
+import com.google.android.gms.plus.PlusClient;
+
+public class GooglePlus extends CordovaPlugin {
+    private static final int REQUEST_CODE_RESOLVE_ERR = 9000;
+    private static final String TAG = "GooglePlusPlugin";
+    public static final String ACTION_LOGIN = "login";
+
+    private PlusClient mPlusClient;
+
     @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState);
-        super.init();
-        // Set by <content src="index.html" /> in config.xml
-        super.loadUrl(Config.getStartUrl());
-        //super.loadUrl("file:///android_asset/www/index.html");
+    public void initialize(final CordovaInterface cordova, final CordovaWebView webView) {
+	super.initialize(cordova, webView);
+	Log.d(TAG, "Initialized");
+    }
+
+    @Override
+    public boolean execute(final String action, final CordovaArgs args, final CallbackContext callback)
+	    throws JSONException {
+	if (action.equals(ACTION_LOGIN)) {
+	    mPlusClient = new PlusClient.Builder(cordova.getActivity(), new ConnectionCallbacks() {
+		@Override
+		public void onConnected(Bundle arg0) {
+		    final String email = mPlusClient.getAccountName();
+		    Log.d(TAG, "Connected: " + email);
+		    callback.success(email);
+		}
+
+		@Override
+		public void onDisconnected() {
+		    Log.d(TAG, "Disconnected");
+		    callback.error("Disconnected");
+		}
+	    }, new OnConnectionFailedListener() {
+		@Override
+		public void onConnectionFailed(ConnectionResult result) {
+		    if (result.hasResolution()) {
+			try {
+			    result.startResolutionForResult(cordova.getActivity(), REQUEST_CODE_RESOLVE_ERR);
+			} catch (SendIntentException e) {
+			    mPlusClient.connect();
+			}
+		    } else {
+			callback.error(result.toString());
+		    }
+		}
+	    }).build();
+	    mPlusClient.connect();
+	    return true;
+	} else {
+	    return false;
+	}
     }
 }
-
