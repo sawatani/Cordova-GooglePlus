@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://www.phonegap.com/ns/plugins/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    id="org.fathens.cordova.googleplus"
+    version="0.0.0">
+
+    <name>GooglePlus Connect</name>
+    
+    <description>
+    </description>
+    
+    <license>Apache 2.0</license>
+    
+    <preference name="APP_ID" />
+    
+    <engines>
+    	<engine name="cordova" version=">=3.5.0" />
+    </engines>
+    
+    <!-- JavaScript interface -->
+    <js-module src="www/js/googlePlus.js" 
+    		  name="GooglePlusConnectPlugin" 
+    		target="fathens/googlePlusConnectPlugin.js">
+        <clobbers target="window.googlePlusConnectPlugin" />
+    </js-module>
+    
+    <!-- android -->
+    <platform name="android">
+
+        <dependency id="com.google.playservices" url="https://github.com/wf9a5m75/google-play-services" commit="master" />
+        <dependency id="android.support.v4" />
+    
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="GooglePlusConnectPlugin">
+                <param name="android-package" value="org.fathens.cordova.googleplus.GooglePlus" />
+            </feature>
+        </config-file>
+        
+        <config-file target="AndroidManifest.xml" parent="/*">
+			<uses-permission android:name="android.permission.GET_ACCOUNTS" /> 
+        </config-file>
+
+        <!-- cordova plugin src files -->
+        <source-file src="platforms/android/src/org/fathens/cordova/googleplus/GooglePlus.java" target-dir="src/org/fathens/cordova/googleplus" />
+         
+    </platform>
+</plugin>
