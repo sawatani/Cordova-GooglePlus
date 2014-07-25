@@ -18,6 +18,7 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
 
 - (void)login:(CDVInvokedUrlCommand *)command
 {
+    NSLog(@"GooglePlusConnect.login invoked with %@", command);
     GPPSignIn* signIn = [GPPSignIn sharedInstance];
     signIn.clientID = [[[NSBundle mainBundle] infoDictionary] objectForKey:kClientIdKey];
     signIn.scopes = [NSArray arrayWithObjects:kGTLAuthScopePlusLogin, nil];
@@ -25,7 +26,10 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
     signIn.delegate = self;
     
     self.callbackId = command.callbackId;
-    [signIn trySilentAuthentication];
+    NSLog(@"Start auth (callback:%@)", command.callbackId);
+    signIn.attemptSSO = YES;
+    [signIn authenticate];
+    NSLog(@"authorizing...");
 }
 
 - (void)disconnect:(CDVInvokedUrlCommand *)command

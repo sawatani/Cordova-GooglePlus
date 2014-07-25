@@ -14,7 +14,7 @@
     <engines>
     	<engine name="cordova" version=">=3.5.0" />
     </engines>
-    
+	
     <!-- JavaScript interface -->
     <js-module src="www/js/googlePlus.js" 
     		  name="GooglePlusConnectPlugin" 
@@ -48,7 +48,7 @@
 	    <preference name="IOS_CLIENT_ID" />
 		
 		<dependency id="org.chromium.frameworks.googleplus" url="https://github.com/MobileChromeApps/mobile-chrome-apps" commit="master" subdir="chrome-cordova/plugins/framework-google-plus" />
-		
+
 		<header-file src="platforms/ios/GooglePlus/Plugins/GooglePlusConnect.h" />
 		<source-file src="platforms/ios/GooglePlus/Plugins/GooglePlusConnect.m" />
 		
@@ -68,10 +68,10 @@
 					<key>CFBundleTypeRole</key>
 					<string>Editor</string>
 					<key>CFBundleURLName</key>
-					<string>org.fathens.cordova.googleplus</string>
+					<string>$PACKAGE_NAME</string>
 					<key>CFBundleURLSchemes</key>
 					<array>
-						<string>org.fathens.cordova.googleplus</string>
+						<string>$PACKAGE_NAME</string>
 					</array>
 				</dict>
 			</array>
