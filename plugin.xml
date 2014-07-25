@@ -11,8 +11,6 @@
     
     <license>Apache 2.0</license>
     
-    <preference name="APP_ID" />
-    
     <engines>
     	<engine name="cordova" version=">=3.5.0" />
     </engines>
@@ -44,4 +42,40 @@
         <source-file src="platforms/android/src/org/fathens/cordova/googleplus/GooglePlus.java" target-dir="src/org/fathens/cordova/googleplus" />
          
     </platform>
+	
+    <!-- ios -->
+    <platform name="ios">
+	    <preference name="IOS_CLIENT_ID" />
+		
+		<dependency id="org.chromium.frameworks.googleplus" url="https://github.com/MobileChromeApps/mobile-chrome-apps" commit="master" subdir="chrome-cordova/plugins/framework-google-plus" />
+		
+		<header-file src="platforms/ios/GooglePlus/Plugins/GooglePlusConnect.h" />
+		<source-file src="platforms/ios/GooglePlus/Plugins/GooglePlusConnect.m" />
+		
+        <config-file target="config.xml" parent="/*">
+            <feature name="GooglePlusConnectPlugin">
+                <param name="ios-package" value="GooglePlusConnect" />
+            </feature>
+        </config-file>
+
+        <config-file target="*-Info.plist" parent="GooglePlusClientID">
+            <string>$IOS_CLIENT_ID</string>
+        </config-file>
+
+        <config-file target="*-Info.plist" parent="CFBundleURLTypes">
+			<array>
+				<dict>
+					<key>CFBundleTypeRole</key>
+					<string>Editor</string>
+					<key>CFBundleURLName</key>
+					<string>org.fathens.cordova.googleplus</string>
+					<key>CFBundleURLSchemes</key>
+					<array>
+						<string>org.fathens.cordova.googleplus</string>
+					</array>
+				</dict>
+			</array>
+        </config-file>
+		
+	</platform>
 </plugin>
