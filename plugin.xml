@@ -11,12 +11,10 @@
     
     <license>Apache 2.0</license>
     
-    <preference name="APP_ID" />
-    
     <engines>
     	<engine name="cordova" version=">=3.5.0" />
     </engines>
-    
+	
     <!-- JavaScript interface -->
     <js-module src="www/js/googlePlus.js" 
     		  name="GooglePlusConnectPlugin" 
@@ -44,4 +42,48 @@
         <source-file src="platforms/android/src/org/fathens/cordova/googleplus/GooglePlus.java" target-dir="src/org/fathens/cordova/googleplus" />
          
     </platform>
+	
+    <!-- ios -->
+    <platform name="ios">
+	    <preference name="IOS_CLIENT_ID" />
+		
+		<dependency id="org.chromium.frameworks.googleplus" url="https://github.com/MobileChromeApps/mobile-chrome-apps" commit="master" subdir="chrome-cordova/plugins/framework-google-plus" />
+
+		<header-file src="platforms/ios/GooglePlus/Plugins/GooglePlusConnect.h" />
+		<source-file src="platforms/ios/GooglePlus/Plugins/GooglePlusConnect.m" />
+		
+		<code-snippet target="APP_DELEGATE_M_AFTER_CORDOVA_INCLUDE" file="Classes/AppDelegate.m">
+			<![CDATA[return [GPPURLHandler handleURL:url sourceApplication:sourceApplication annotation:annotation];]]>
+		</code-snippet>
+		
+		<code-snippet target="APP_DELEGATE_M_HANDLE_OPENURL_END" file="Classes/AppDelegate.m">
+			<![CDATA[#import <GooglePlus/GPPURLHandler.h>]]>
+		</code-snippet>
+		
+        <config-file target="config.xml" parent="/*">
+            <feature name="GooglePlusConnectPlugin">
+                <param name="ios-package" value="GooglePlusConnect" />
+            </feature>
+        </config-file>
+
+        <config-file target="*-Info.plist" parent="GooglePlusClientID">
+            <string>$IOS_CLIENT_ID</string>
+        </config-file>
+
+        <config-file target="*-Info.plist" parent="CFBundleURLTypes">
+			<array>
+				<dict>
+					<key>CFBundleTypeRole</key>
+					<string>Editor</string>
+					<key>CFBundleURLName</key>
+					<string>$PACKAGE_NAME</string>
+					<key>CFBundleURLSchemes</key>
+					<array>
+						<string>$PACKAGE_NAME</string>
+					</array>
+				</dict>
+			</array>
+        </config-file>
+		
+	</platform>
 </plugin>
