@@ -50,7 +50,7 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
         NSString* email = auth.userEmail;
         NSString* token = auth.accessToken;
         NSLog(@"Received auth object %@ (%@): %@", auth, email, token);
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:email];
+        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:token];
     }
     [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
 }
