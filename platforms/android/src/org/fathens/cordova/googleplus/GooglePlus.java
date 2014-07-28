@@ -27,12 +27,15 @@ import org.apache.cordova.CordovaWebView;
 import org.json.JSONException;
 
 import android.content.IntentSender.SendIntentException;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
 import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
+import com.google.android.gms.common.Scopes;
 import com.google.android.gms.plus.PlusClient;
 
 public class GooglePlus extends CordovaPlugin {
@@ -52,12 +55,28 @@ public class GooglePlus extends CordovaPlugin {
     public boolean execute(final String action, final CordovaArgs args, final CallbackContext callback)
 	    throws JSONException {
 	if (action.equals(ACTION_LOGIN)) {
+	    final String scopes = Scopes.PLUS_LOGIN;
 	    mPlusClient = new PlusClient.Builder(cordova.getActivity(), new ConnectionCallbacks() {
 		@Override
-		public void onConnected(Bundle arg0) {
-		    final String email = mPlusClient.getAccountName();
-		    Log.d(TAG, "Connected: " + email);
-		    callback.success(email);
+		public void onConnected(final Bundle bundle) {
+		    final AsyncTask<Object, Object, Object> task = new AsyncTask<Object, Object, Object>() {
+			@Override
+			protected Object doInBackground(Object... params) {
+			    try {
+				final String accountName = mPlusClient.getAccountName();
+				Log.d(TAG, "Obtaining token by user: " + accountName);
+				final String token = GoogleAuthUtil.getToken(cordova.getActivity()
+					.getApplicationContext(), accountName, "oauth2:" + scopes);
+				Log.d(TAG, "Connected(" + accountName + "): " + token);
+				callback.success(token);
+			    } catch (Exception e) {
+				e.printStackTrace();
+				callback.error(e.getLocalizedMessage());
+			    }
+			    return null;
+			}
+		    };
+		    task.execute((Void) null);
 		}
 
 		@Override
@@ -78,7 +97,7 @@ public class GooglePlus extends CordovaPlugin {
 			callback.error(result.toString());
 		    }
 		}
-	    }).build();
+	    }).setScopes(scopes).build();
 	    mPlusClient.connect();
 	    return true;
 	} else {
