@@ -35,7 +35,7 @@
         </config-file>
         
         <config-file target="AndroidManifest.xml" parent="/*">
-			<uses-permission android:name="android.permission.GET_ACCOUNTS" /> 
+			<uses-permission android:name="android.permission.GET_ACCOUNTS" />
         </config-file>
 
         <!-- cordova plugin src files -->

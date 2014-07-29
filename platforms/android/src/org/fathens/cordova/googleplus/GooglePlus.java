@@ -26,29 +26,30 @@ import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
 import org.json.JSONException;
 
+import android.content.Intent;
 import android.content.IntentSender.SendIntentException;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
-import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
 import com.google.android.gms.common.Scopes;
-import com.google.android.gms.plus.PlusClient;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.plus.Plus;
 
 public class GooglePlus extends CordovaPlugin {
     private static final int REQUEST_CODE_RESOLVE_ERR = 9000;
     private static final String TAG = "GooglePlusPlugin";
     public static final String ACTION_LOGIN = "login";
 
-    private PlusClient mPlusClient;
+    private GoogleApiClient apiClient;
 
     @Override
     public void initialize(final CordovaInterface cordova, final CordovaWebView webView) {
 	super.initialize(cordova, webView);
+	cordova.setActivityResultCallback(this);
 	Log.d(TAG, "Initialized");
     }
 
@@ -56,53 +57,84 @@ public class GooglePlus extends CordovaPlugin {
     public boolean execute(final String action, final CordovaArgs args, final CallbackContext callback)
 	    throws JSONException {
 	if (action.equals(ACTION_LOGIN)) {
-	    final String[] scopes = new String[] { Scopes.PLUS_LOGIN, "https://www.googleapis.com/auth/userinfo.email" };
-	    mPlusClient = new PlusClient.Builder(cordova.getActivity(), new ConnectionCallbacks() {
-		@Override
-		public void onConnected(final Bundle bundle) {
-		    final AsyncTask<Object, Object, Object> task = new AsyncTask<Object, Object, Object>() {
-			@Override
-			protected Object doInBackground(Object... params) {
-			    try {
-				final String accountName = mPlusClient.getAccountName();
-				Log.d(TAG, "Obtaining token by user: " + accountName);
-				final String token = GoogleAuthUtil.getToken(cordova.getActivity()
-					.getApplicationContext(), accountName, "oauth2:" + TextUtils.join(" ", scopes));
-				Log.d(TAG, "Connected(" + accountName + "): " + token);
-				callback.success(token);
-			    } catch (Exception e) {
-				e.printStackTrace();
-				callback.error(e.getLocalizedMessage());
-			    }
-			    return null;
-			}
-		    };
-		    task.execute((Void) null);
-		}
-
-		@Override
-		public void onDisconnected() {
-		    Log.d(TAG, "Disconnected");
-		    callback.error("Disconnected");
-		}
-	    }, new OnConnectionFailedListener() {
-		@Override
-		public void onConnectionFailed(ConnectionResult result) {
-		    if (result.hasResolution()) {
-			try {
-			    result.startResolutionForResult(cordova.getActivity(), REQUEST_CODE_RESOLVE_ERR);
-			} catch (SendIntentException e) {
-			    mPlusClient.connect();
-			}
-		    } else {
-			callback.error(result.toString());
-		    }
-		}
-	    }).setScopes(scopes).build();
-	    mPlusClient.connect();
+	    loginToken(callback);
 	    return true;
 	} else {
 	    return false;
+	}
+    }
+
+    private void loginToken(final CallbackContext callback) {
+	final String[] scopeUrls = new String[] { Scopes.PLUS_LOGIN, "https://www.googleapis.com/auth/userinfo.email" };
+	final Scope[] scopes = new Scope[scopeUrls.length];
+	for (int i = 0; i < scopeUrls.length; i++) {
+	    scopes[i] = new Scope(scopeUrls[i]);
+	}
+	final String scoping = String.format("oauth2:%s", TextUtils.join(" ", scopeUrls));
+
+	final GoogleApiClient.ConnectionCallbacks connectionCallbacks = new GoogleApiClient.ConnectionCallbacks() {
+
+	    @Override
+	    public void onConnected(Bundle bundle) {
+		final String accountName = Plus.AccountApi.getAccountName(apiClient);
+		Log.d(TAG, "Obtaining token by user(" + accountName + "): " + scoping);
+		cordova.getThreadPool().execute(new Runnable() {
+		    @Override
+		    public void run() {
+			try {
+			    final String token = GoogleAuthUtil.getToken(cordova.getActivity(), accountName, scoping);
+			    Log.d(TAG, "Connected(" + accountName + "): " + token);
+			    callback.success(token);
+			} catch (Exception e) {
+			    e.printStackTrace();
+			    callback.error(e.getLocalizedMessage());
+			}
+		    }
+		});
+	    }
+
+	    @Override
+	    public void onConnectionSuspended(int state) {
+		Log.d(TAG, "onConnectionSuspended: " + state);
+		apiClient.connect();
+	    }
+	};
+	final GoogleApiClient.OnConnectionFailedListener onConnectionFailedListener = new GoogleApiClient.OnConnectionFailedListener() {
+
+	    @Override
+	    public void onConnectionFailed(ConnectionResult result) {
+		Log.e(TAG, "onConnectionFailed:" + result);
+		if (result.hasResolution()) {
+		    Log.i(TAG, "startResolutionForResult: " + REQUEST_CODE_RESOLVE_ERR);
+		    try {
+			result.startResolutionForResult(cordova.getActivity(), REQUEST_CODE_RESOLVE_ERR);
+		    } catch (SendIntentException e) {
+			apiClient.connect();
+		    }
+		} else {
+		    callback.error(result.toString());
+		}
+	    }
+	};
+
+	final GoogleApiClient.Builder builder = new GoogleApiClient.Builder(cordova.getActivity())
+		.addConnectionCallbacks(connectionCallbacks).addOnConnectionFailedListener(onConnectionFailedListener)
+		.addApi(Plus.API, Plus.PlusOptions.builder().build());
+	for (Scope scope : scopes) {
+	    builder.addScope(scope);
+	}
+	apiClient = builder.build();
+	apiClient.connect();
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+	Log.i(TAG, "onActivityResult:" + requestCode);
+	if (requestCode == REQUEST_CODE_RESOLVE_ERR) {
+	    if (!apiClient.isConnecting()) {
+		Log.w(TAG, "Not Connecting... Try Connect.");
+		apiClient.connect();
+	    }
 	}
     }
 }
