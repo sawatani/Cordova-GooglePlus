@@ -29,6 +29,7 @@ import org.json.JSONException;
 import android.content.IntentSender.SendIntentException;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.android.gms.auth.GoogleAuthUtil;
@@ -55,7 +56,7 @@ public class GooglePlus extends CordovaPlugin {
     public boolean execute(final String action, final CordovaArgs args, final CallbackContext callback)
 	    throws JSONException {
 	if (action.equals(ACTION_LOGIN)) {
-	    final String scopes = Scopes.PLUS_LOGIN;
+	    final String[] scopes = new String[] { Scopes.PLUS_LOGIN, "https://www.googleapis.com/auth/userinfo.email" };
 	    mPlusClient = new PlusClient.Builder(cordova.getActivity(), new ConnectionCallbacks() {
 		@Override
 		public void onConnected(final Bundle bundle) {
@@ -66,7 +67,7 @@ public class GooglePlus extends CordovaPlugin {
 				final String accountName = mPlusClient.getAccountName();
 				Log.d(TAG, "Obtaining token by user: " + accountName);
 				final String token = GoogleAuthUtil.getToken(cordova.getActivity()
-					.getApplicationContext(), accountName, "oauth2:" + scopes);
+					.getApplicationContext(), accountName, "oauth2:" + TextUtils.join(" ", scopes));
 				Log.d(TAG, "Connected(" + accountName + "): " + token);
 				callback.success(token);
 			    } catch (Exception e) {
