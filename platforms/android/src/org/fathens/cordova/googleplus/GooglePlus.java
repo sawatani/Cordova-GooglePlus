@@ -27,6 +27,7 @@ import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import android.accounts.AccountManager;
 import android.app.Activity;
@@ -63,17 +64,22 @@ public class GooglePlus extends CordovaPlugin {
 	    throws JSONException {
 	if (action.equals(ACTION_LOGIN)) {
 	    currentCallback = callback;
-	    loginToken();
+	    final String accountName = args.optString(0);
+	    loginToken(accountName);
 	    return true;
 	} else {
 	    return false;
 	}
     }
 
-    private void loginToken() {
-	final Intent picker = AccountPicker.newChooseAccountIntent(null, null,
-		new String[] { GoogleAuthUtil.GOOGLE_ACCOUNT_TYPE }, true, null, null, null, null);
-	cordova.startActivityForResult(this, picker, REQUEST_PICK_ACCOUNT);
+    private void loginToken(final String accountName) {
+	if (accountName != null && accountName.length() > 0) {
+	    obtainToken(accountName);
+	} else {
+	    final Intent picker = AccountPicker.newChooseAccountIntent(null, null,
+		    new String[] { GoogleAuthUtil.GOOGLE_ACCOUNT_TYPE }, true, null, null, null, null);
+	    cordova.startActivityForResult(this, picker, REQUEST_PICK_ACCOUNT);
+	}
     }
 
     private void obtainToken(final String accountName) {
@@ -91,7 +97,10 @@ public class GooglePlus extends CordovaPlugin {
 		    Log.d(TAG, "Second try to get token");
 		    final String token = GoogleAuthUtil.getToken(cordova.getActivity(), accountName, scoping);
 		    Log.d(TAG, "Connected(" + accountName + "): " + token);
-		    currentCallback.success(token);
+		    final JSONObject result = new JSONObject().put("accountName", accountName)
+			    .put("accessToken", token);
+		    Log.d(TAG, "Callbacking result: " + result);
+		    currentCallback.success(result);
 		} catch (UserRecoverableAuthException ex) {
 		    Log.e(TAG, "Recovering authorization", ex);
 		    final Intent intent = ex.getIntent();
@@ -101,6 +110,15 @@ public class GooglePlus extends CordovaPlugin {
 		    ex.printStackTrace();
 		    currentCallback.error(ex.getLocalizedMessage());
 		} catch (GoogleAuthException ex) {
+		    ex.printStackTrace();
+		    if ("BadUsername".equals(ex.getMessage())) {
+			Log.e(TAG, "Invoked with BadUsername(" + accountName + "). re-select account...", ex);
+			loginToken(null);
+		    } else {
+			currentCallback.error(ex.getLocalizedMessage());
+		    }
+		} catch (JSONException ex) {
+		    // TODO Auto-generated catch block
 		    ex.printStackTrace();
 		    currentCallback.error(ex.getLocalizedMessage());
 		}
