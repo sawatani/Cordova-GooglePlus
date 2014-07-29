@@ -19,6 +19,8 @@
 
 package org.fathens.cordova.googleplus;
 
+import java.io.IOException;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaArgs;
 import org.apache.cordova.CordovaInterface;
@@ -32,14 +34,18 @@ import android.content.Intent;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
+import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.common.AccountPicker;
 import com.google.android.gms.common.Scopes;
 
 public class GooglePlus extends CordovaPlugin {
-    private static final int REQUEST_PICK_ACCOUNT = 9000;
-
     private static final String TAG = "GooglePlusPlugin";
+
+    public static final int REQUEST_PICK_ACCOUNT = 9000;
+    public static final int REQUEST_AUTH_RECOVER = 9001;
+
     public static final String ACTION_LOGIN = "login";
     private static final String[] scopeUrls = new String[] { Scopes.PLUS_LOGIN,
 	    "https://www.googleapis.com/auth/userinfo.email" };
@@ -77,12 +83,26 @@ public class GooglePlus extends CordovaPlugin {
 	    @Override
 	    public void run() {
 		try {
+		    Log.d(TAG, "First try to get token");
+		    final String waste = GoogleAuthUtil.getToken(cordova.getActivity(), accountName, scoping);
+		    // TODO Check token if valid
+		    Log.d(TAG, "Clearing the token: " + waste);
+		    GoogleAuthUtil.clearToken(cordova.getActivity(), waste);
+		    Log.d(TAG, "Second try to get token");
 		    final String token = GoogleAuthUtil.getToken(cordova.getActivity(), accountName, scoping);
 		    Log.d(TAG, "Connected(" + accountName + "): " + token);
 		    currentCallback.success(token);
-		} catch (Exception e) {
-		    e.printStackTrace();
-		    currentCallback.error(e.getLocalizedMessage());
+		} catch (UserRecoverableAuthException ex) {
+		    Log.e(TAG, "Recovering authorization", ex);
+		    final Intent intent = ex.getIntent();
+		    intent.putExtra(AccountManager.KEY_ACCOUNT_NAME, accountName);
+		    cordova.startActivityForResult(GooglePlus.this, intent, REQUEST_AUTH_RECOVER);
+		} catch (IOException ex) {
+		    ex.printStackTrace();
+		    currentCallback.error(ex.getLocalizedMessage());
+		} catch (GoogleAuthException ex) {
+		    ex.printStackTrace();
+		    currentCallback.error(ex.getLocalizedMessage());
 		}
 	    }
 	});
@@ -98,6 +118,15 @@ public class GooglePlus extends CordovaPlugin {
 		obtainToken(accountName);
 	    } else {
 		currentCallback.error("No account selected");
+	    }
+	    break;
+
+	case REQUEST_AUTH_RECOVER:
+	    if (resultCode == Activity.RESULT_OK) {
+		final String accountName = intent.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+		obtainToken(accountName);
+	    } else {
+		currentCallback.error("Cannot authrorize");
 	    }
 	    break;
 
