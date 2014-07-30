@@ -34,7 +34,8 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
 
 - (void)login:(CDVInvokedUrlCommand *)command
 {
-    NSLog(@"GooglePlusConnect.login invoked with %@", command);
+    id arg = [command argumentAtIndex:0];
+    NSLog(@"GooglePlusConnect.login invoked with argument:%@(arguments are ignored)", arg);
     GPPSignIn* signIn = [GPPSignIn sharedInstance];
     signIn.clientID = [[[NSBundle mainBundle] infoDictionary] objectForKey:kClientIdKey];
     signIn.scopes = [NSArray arrayWithObjects:kGTLAuthScopePlusLogin, nil];
