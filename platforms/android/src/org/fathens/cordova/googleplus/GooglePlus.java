@@ -19,28 +19,39 @@
 
 package org.fathens.cordova.googleplus;
 
+import java.io.IOException;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaArgs;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
 import org.json.JSONException;
+import org.json.JSONObject;
 
-import android.content.IntentSender.SendIntentException;
-import android.os.Bundle;
+import android.accounts.AccountManager;
+import android.app.Activity;
+import android.content.Intent;
+import android.text.TextUtils;
 import android.util.Log;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
-import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
-import com.google.android.gms.plus.PlusClient;
+import com.google.android.gms.auth.GoogleAuthException;
+import com.google.android.gms.auth.GoogleAuthUtil;
+import com.google.android.gms.auth.UserRecoverableAuthException;
+import com.google.android.gms.common.AccountPicker;
+import com.google.android.gms.common.Scopes;
 
 public class GooglePlus extends CordovaPlugin {
-    private static final int REQUEST_CODE_RESOLVE_ERR = 9000;
     private static final String TAG = "GooglePlusPlugin";
-    public static final String ACTION_LOGIN = "login";
 
-    private PlusClient mPlusClient;
+    public static final int REQUEST_PICK_ACCOUNT = 9000;
+    public static final int REQUEST_AUTH_RECOVER = 9001;
+
+    public static final String ACTION_LOGIN = "login";
+    private static final String[] scopeUrls = new String[] { Scopes.PLUS_LOGIN,
+	    "https://www.googleapis.com/auth/userinfo.email" };
+
+    private CallbackContext currentCallback;
 
     @Override
     public void initialize(final CordovaInterface cordova, final CordovaWebView webView) {
@@ -52,37 +63,93 @@ public class GooglePlus extends CordovaPlugin {
     public boolean execute(final String action, final CordovaArgs args, final CallbackContext callback)
 	    throws JSONException {
 	if (action.equals(ACTION_LOGIN)) {
-	    mPlusClient = new PlusClient.Builder(cordova.getActivity(), new ConnectionCallbacks() {
-		@Override
-		public void onConnected(Bundle arg0) {
-		    final String email = mPlusClient.getAccountName();
-		    Log.d(TAG, "Connected: " + email);
-		    callback.success(email);
-		}
-
-		@Override
-		public void onDisconnected() {
-		    Log.d(TAG, "Disconnected");
-		    callback.error("Disconnected");
-		}
-	    }, new OnConnectionFailedListener() {
-		@Override
-		public void onConnectionFailed(ConnectionResult result) {
-		    if (result.hasResolution()) {
-			try {
-			    result.startResolutionForResult(cordova.getActivity(), REQUEST_CODE_RESOLVE_ERR);
-			} catch (SendIntentException e) {
-			    mPlusClient.connect();
-			}
-		    } else {
-			callback.error(result.toString());
-		    }
-		}
-	    }).build();
-	    mPlusClient.connect();
+	    currentCallback = callback;
+	    final String accountName = args.optString(0);
+	    loginToken(accountName);
 	    return true;
 	} else {
 	    return false;
+	}
+    }
+
+    private void loginToken(final String accountName) {
+	if (accountName != null && accountName.length() > 0) {
+	    obtainToken(accountName);
+	} else {
+	    final Intent picker = AccountPicker.newChooseAccountIntent(null, null,
+		    new String[] { GoogleAuthUtil.GOOGLE_ACCOUNT_TYPE }, true, null, null, null, null);
+	    cordova.startActivityForResult(this, picker, REQUEST_PICK_ACCOUNT);
+	}
+    }
+
+    private void obtainToken(final String accountName) {
+	final String scoping = String.format("oauth2:%s", TextUtils.join(" ", scopeUrls));
+	Log.d(TAG, "Obtaining token by user(" + accountName + "): " + scoping);
+	cordova.getThreadPool().execute(new Runnable() {
+	    @Override
+	    public void run() {
+		try {
+		    Log.d(TAG, "First try to get token");
+		    final String waste = GoogleAuthUtil.getToken(cordova.getActivity(), accountName, scoping);
+		    // TODO Check token if valid
+		    Log.d(TAG, "Clearing the token: " + waste);
+		    GoogleAuthUtil.clearToken(cordova.getActivity(), waste);
+		    Log.d(TAG, "Second try to get token");
+		    final String token = GoogleAuthUtil.getToken(cordova.getActivity(), accountName, scoping);
+		    Log.d(TAG, "Connected(" + accountName + "): " + token);
+		    final JSONObject result = new JSONObject().put("accountName", accountName)
+			    .put("accessToken", token);
+		    Log.d(TAG, "Callbacking result: " + result);
+		    currentCallback.success(result);
+		} catch (UserRecoverableAuthException ex) {
+		    Log.e(TAG, "Recovering authorization", ex);
+		    final Intent intent = ex.getIntent();
+		    intent.putExtra(AccountManager.KEY_ACCOUNT_NAME, accountName);
+		    cordova.startActivityForResult(GooglePlus.this, intent, REQUEST_AUTH_RECOVER);
+		} catch (IOException ex) {
+		    ex.printStackTrace();
+		    currentCallback.error(ex.getLocalizedMessage());
+		} catch (GoogleAuthException ex) {
+		    ex.printStackTrace();
+		    if ("BadUsername".equals(ex.getMessage())) {
+			Log.e(TAG, "Invoked with BadUsername(" + accountName + "). re-select account...", ex);
+			loginToken(null);
+		    } else {
+			currentCallback.error(ex.getLocalizedMessage());
+		    }
+		} catch (JSONException ex) {
+		    // TODO Auto-generated catch block
+		    ex.printStackTrace();
+		    currentCallback.error(ex.getLocalizedMessage());
+		}
+	    }
+	});
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+	Log.i(TAG, "onActivityResult:" + requestCode);
+	switch (requestCode) {
+	case REQUEST_PICK_ACCOUNT:
+	    if (resultCode == Activity.RESULT_OK) {
+		final String accountName = intent.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+		obtainToken(accountName);
+	    } else {
+		currentCallback.error("No account selected");
+	    }
+	    break;
+
+	case REQUEST_AUTH_RECOVER:
+	    if (resultCode == Activity.RESULT_OK) {
+		final String accountName = intent.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+		obtainToken(accountName);
+	    } else {
+		currentCallback.error("Cannot authrorize");
+	    }
+	    break;
+
+	default:
+	    break;
 	}
     }
 }

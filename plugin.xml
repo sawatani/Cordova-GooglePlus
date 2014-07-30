@@ -35,7 +35,7 @@
         </config-file>
         
         <config-file target="AndroidManifest.xml" parent="/*">
-			<uses-permission android:name="android.permission.GET_ACCOUNTS" /> 
+			<uses-permission android:name="android.permission.GET_ACCOUNTS" />
         </config-file>
 
         <!-- cordova plugin src files -->
@@ -51,14 +51,6 @@
 
 		<header-file src="platforms/ios/GooglePlus/Plugins/GooglePlusConnect.h" />
 		<source-file src="platforms/ios/GooglePlus/Plugins/GooglePlusConnect.m" />
-		
-		<code-snippet target="APP_DELEGATE_M_AFTER_CORDOVA_INCLUDE" file="Classes/AppDelegate.m">
-			<![CDATA[return [GPPURLHandler handleURL:url sourceApplication:sourceApplication annotation:annotation];]]>
-		</code-snippet>
-		
-		<code-snippet target="APP_DELEGATE_M_HANDLE_OPENURL_END" file="Classes/AppDelegate.m">
-			<![CDATA[#import <GooglePlus/GPPURLHandler.h>]]>
-		</code-snippet>
 		
         <config-file target="config.xml" parent="/*">
             <feature name="GooglePlusConnectPlugin">

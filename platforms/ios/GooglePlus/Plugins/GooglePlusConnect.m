@@ -9,6 +9,7 @@
 #import "GooglePlusConnect.h"
 #import <GoogleOpenSource/GTLPlusConstants.h>
 #import <GoogleOpenSource/GTMOAuth2Authentication.h>
+#import <GooglePlus/GPPURLHandler.h>
 
 @implementation GooglePlusConnect
 
@@ -16,9 +17,25 @@
 
 static NSString* const kClientIdKey = @"GooglePlusClientID";
 
+- (void)handleOpenURL:(NSNotification *)notification
+{
+    
+    NSURL* url = [notification object];
+    
+    NSLog(@"Handling URL:%@", url);
+    
+    if ([url isKindOfClass:[NSURL class]]) {
+        NSString* srcApp = @"com.apple.mobilesafari";
+        id annotation = NULL;
+        NSLog(@"Invoking GPPURLHandler with URL:%@ sourceApplication:%@ annotation:%@", url, srcApp, annotation);
+        [GPPURLHandler handleURL:url sourceApplication:srcApp annotation:annotation];
+    }
+}
+
 - (void)login:(CDVInvokedUrlCommand *)command
 {
-    NSLog(@"GooglePlusConnect.login invoked with %@", command);
+    id arg = [command argumentAtIndex:0];
+    NSLog(@"GooglePlusConnect.login invoked with argument:%@(arguments are ignored)", arg);
     GPPSignIn* signIn = [GPPSignIn sharedInstance];
     signIn.clientID = [[[NSBundle mainBundle] infoDictionary] objectForKey:kClientIdKey];
     signIn.scopes = [NSArray arrayWithObjects:kGTLAuthScopePlusLogin, nil];
@@ -47,10 +64,9 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
         NSLog(@"Received error: %@", error);
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
     } else {
-        NSString* email = auth.userEmail;
-        NSString* token = auth.accessToken;
-        NSLog(@"Received auth object %@ (%@): %@", auth, email, token);
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:email];
+        NSDictionary* dict = [NSDictionary dictionaryWithObjectsAndKeys:auth.userEmail, @"accountName", auth.accessToken, @"accessToken", nil];
+        NSLog(@"Received auth object %@: %@", auth, dict);
+        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
     }
     [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
 }
