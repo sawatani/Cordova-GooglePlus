@@ -51,6 +51,8 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
 
 - (void)disconnect:(CDVInvokedUrlCommand *)command
 {
+    id arg = [command argumentAtIndex:0];
+    NSLog(@"GooglePlusConnect.disconnect invoked with argument:%@(arguments are ignored)", arg);
     GPPSignIn* signIn = [GPPSignIn sharedInstance];
     
     self.callbackId = command.callbackId;

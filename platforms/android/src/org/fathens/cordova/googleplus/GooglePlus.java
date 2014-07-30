@@ -32,6 +32,8 @@ import org.json.JSONObject;
 import android.accounts.AccountManager;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.IntentSender.SendIntentException;
+import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -39,33 +41,45 @@ import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.common.AccountPicker;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.Scopes;
+import com.google.android.gms.plus.PlusClient;
 
 public class GooglePlus extends CordovaPlugin {
     private static final String TAG = "GooglePlusPlugin";
 
     public static final int REQUEST_PICK_ACCOUNT = 9000;
     public static final int REQUEST_AUTH_RECOVER = 9001;
+    public static final int REQUEST_PCLIENT_RECOVER = 9002;
 
     public static final String ACTION_LOGIN = "login";
+    public static final String ACTION_DISCONNECT = "disconnect";
+
     private static final String[] scopeUrls = new String[] { Scopes.PLUS_LOGIN,
 	    "https://www.googleapis.com/auth/userinfo.email" };
 
     private CallbackContext currentCallback;
+    private PlusClient pClient;
 
     @Override
     public void initialize(final CordovaInterface cordova, final CordovaWebView webView) {
 	super.initialize(cordova, webView);
+	cordova.setActivityResultCallback(this);
 	Log.d(TAG, "Initialized");
     }
 
     @Override
     public boolean execute(final String action, final CordovaArgs args, final CallbackContext callback)
 	    throws JSONException {
+	currentCallback = callback;
 	if (action.equals(ACTION_LOGIN)) {
-	    currentCallback = callback;
 	    final String accountName = args.optString(0);
 	    loginToken(accountName);
+	    return true;
+	} else if (action.equals(ACTION_DISCONNECT)) {
+	    final String accountName = args.optString(0);
+	    disconnect(accountName);
 	    return true;
 	} else {
 	    return false;
@@ -118,10 +132,59 @@ public class GooglePlus extends CordovaPlugin {
 			currentCallback.error(ex.getLocalizedMessage());
 		    }
 		} catch (JSONException ex) {
-		    // TODO Auto-generated catch block
 		    ex.printStackTrace();
 		    currentCallback.error(ex.getLocalizedMessage());
 		}
+	    }
+	});
+    }
+
+    private void disconnect(final String accountName) {
+	Log.d(TAG, "Disconnecting with " + accountName);
+	cordova.getThreadPool().execute(new Runnable() {
+	    final GooglePlayServicesClient.ConnectionCallbacks connectionCallbacks = new GooglePlayServicesClient.ConnectionCallbacks() {
+
+		@Override
+		public void onDisconnected() {
+		    Log.d(TAG, "PlusClient: Disconnected while creating.");
+		    currentCallback.error("PlusClient: Disconnected Somehow");
+		}
+
+		@Override
+		public void onConnected(Bundle bundle) {
+		    Log.d(TAG, "PlusClient: Connected");
+		    pClient.clearDefaultAccount();
+		    pClient.revokeAccessAndDisconnect(new PlusClient.OnAccessRevokedListener() {
+
+			@Override
+			public void onAccessRevoked(ConnectionResult result) {
+			    Log.d(TAG, "PlusClient: onAccessRevoked: " + result);
+			    currentCallback.success();
+			}
+		    });
+		}
+	    };
+	    final GooglePlayServicesClient.OnConnectionFailedListener onConnectionFailedListener = new GooglePlayServicesClient.OnConnectionFailedListener() {
+		@Override
+		public void onConnectionFailed(ConnectionResult result) {
+		    Log.d(TAG, "PlusClient: onConnectionFailed: " + result);
+		    if (result.hasResolution()) {
+			try {
+			    result.startResolutionForResult(cordova.getActivity(), REQUEST_PCLIENT_RECOVER);
+			} catch (SendIntentException ex) {
+			    pClient.connect();
+			}
+		    } else {
+			currentCallback.error("PlusClient: Failed to connect");
+		    }
+		}
+	    };
+
+	    @Override
+	    public void run() {
+		pClient = new PlusClient.Builder(cordova.getActivity(), connectionCallbacks, onConnectionFailedListener)
+			.setAccountName(accountName).build();
+		pClient.connect();
 	    }
 	});
     }
@@ -145,6 +208,14 @@ public class GooglePlus extends CordovaPlugin {
 		obtainToken(accountName);
 	    } else {
 		currentCallback.error("Cannot authrorize");
+	    }
+	    break;
+
+	case REQUEST_PCLIENT_RECOVER:
+	    if (resultCode == Activity.RESULT_OK && pClient != null) {
+		pClient.connect();
+	    } else {
+		currentCallback.error("PlusClient: Failed to retry connection");
 	    }
 	    break;
 
