@@ -34,16 +34,31 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
 
 - (void)login:(CDVInvokedUrlCommand *)command
 {
+    [self signIn:command];
+}
+
+
+- (void)publish:(CDVInvokedUrlCommand *)command
+{
+    [self signIn:command];
+}
+
+- (void)signIn:(CDVInvokedUrlCommand *)command
+{
     id arg = [command argumentAtIndex:0];
     NSLog(@"GooglePlusConnect.login invoked with argument:%@(arguments are ignored)", arg);
-    GPPSignIn* signIn = [GPPSignIn sharedInstance];
-    signIn.clientID = [[[NSBundle mainBundle] infoDictionary] objectForKey:kClientIdKey];
-    signIn.scopes = [NSArray arrayWithObjects:kGTLAuthScopePlusLogin, nil];
-    signIn.shouldFetchGoogleUserEmail = YES;
-    signIn.delegate = self;
     
     self.callbackId = command.callbackId;
     NSLog(@"Start auth (callback:%@)", command.callbackId);
+    
+    GPPSignIn* signIn = [GPPSignIn sharedInstance];
+    signIn.clientID = [[[NSBundle mainBundle] infoDictionary] objectForKey:kClientIdKey];
+    signIn.actions = [NSArray arrayWithObjects:@"https://schemas.google.com/AddActivity", nil];
+    NSLog(@"SignIn with actions: %@", signIn.actions);
+    signIn.shouldFetchGoogleUserEmail = YES;
+    signIn.scopes = [NSArray arrayWithObjects:kGTLAuthScopePlusLogin, nil];
+    signIn.delegate = self;
+    
     signIn.attemptSSO = YES;
     [signIn authenticate];
     NSLog(@"authorizing...");
@@ -66,7 +81,7 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
         NSLog(@"Received error: %@", error);
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
     } else {
-        NSDictionary* dict = [NSDictionary dictionaryWithObjectsAndKeys:auth.userEmail, @"accountName", auth.accessToken, @"accessToken", nil];
+        NSDictionary* dict = [NSDictionary dictionaryWithObjectsAndKeys:auth.accessToken, @"accessToken", auth.userEmail, @"accountName", nil];
         NSLog(@"Received auth object %@: %@", auth, dict);
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
     }

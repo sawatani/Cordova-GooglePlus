@@ -54,6 +54,7 @@ public class GooglePlus extends CordovaPlugin {
     public static final int REQUEST_PCLIENT_RECOVER = 9002;
 
     public static final String ACTION_LOGIN = "login";
+    public static final String ACTION_PUBLISH = "publish";
     public static final String ACTION_DISCONNECT = "disconnect";
 
     private static final String[] scopeUrls = new String[] { Scopes.PLUS_LOGIN,
@@ -61,6 +62,8 @@ public class GooglePlus extends CordovaPlugin {
 
     private CallbackContext currentCallback;
     private PlusClient pClient;
+    private String accountName;
+    private String[] actions = new String[] { "https://schemas.google.com/AddActivity" };
 
     @Override
     public void initialize(final CordovaInterface cordova, final CordovaWebView webView) {
@@ -73,22 +76,32 @@ public class GooglePlus extends CordovaPlugin {
     public boolean execute(final String action, final CordovaArgs args, final CallbackContext callback)
 	    throws JSONException {
 	currentCallback = callback;
+	accountName = args.optString(0);
 	if (action.equals(ACTION_LOGIN)) {
-	    final String accountName = args.optString(0);
-	    loginToken(accountName);
+	    login();
+	    return true;
+	} else if (action.equals(ACTION_PUBLISH)) {
+	    publish();
 	    return true;
 	} else if (action.equals(ACTION_DISCONNECT)) {
-	    final String accountName = args.optString(0);
-	    disconnect(accountName);
+	    disconnect();
 	    return true;
 	} else {
 	    return false;
 	}
     }
 
-    private void loginToken(final String accountName) {
+    private void login() {
+	signIn();
+    }
+
+    private void publish() {
+	signIn();
+    }
+
+    private void signIn() {
 	if (accountName != null && accountName.length() > 0) {
-	    obtainToken(accountName);
+	    obtainToken();
 	} else {
 	    final Intent picker = AccountPicker.newChooseAccountIntent(null, null,
 		    new String[] { GoogleAuthUtil.GOOGLE_ACCOUNT_TYPE }, true, null, null, null, null);
@@ -96,7 +109,7 @@ public class GooglePlus extends CordovaPlugin {
 	}
     }
 
-    private void obtainToken(final String accountName) {
+    private void obtainToken() {
 	final String scoping = String.format("oauth2:%s", TextUtils.join(" ", scopeUrls));
 	Log.d(TAG, "Obtaining token by user(" + accountName + "): " + scoping);
 	cordova.getThreadPool().execute(new Runnable() {
@@ -108,8 +121,14 @@ public class GooglePlus extends CordovaPlugin {
 		    // TODO Check token if valid
 		    Log.d(TAG, "Clearing the token: " + waste);
 		    GoogleAuthUtil.clearToken(cordova.getActivity(), waste);
+		    final Bundle bundle = new Bundle();
+		    if (actions != null && actions.length > 0) {
+			final String actionString = TextUtils.join(" ", actions);
+			bundle.putString(GoogleAuthUtil.KEY_REQUEST_VISIBLE_ACTIVITIES, actionString);
+		    }
+		    Log.d(TAG, "SignIn with " + bundle);
 		    Log.d(TAG, "Second try to get token");
-		    final String token = GoogleAuthUtil.getToken(cordova.getActivity(), accountName, scoping);
+		    final String token = GoogleAuthUtil.getToken(cordova.getActivity(), accountName, scoping, bundle);
 		    Log.d(TAG, "Connected(" + accountName + "): " + token);
 		    final JSONObject result = new JSONObject().put("accountName", accountName)
 			    .put("accessToken", token);
@@ -117,9 +136,7 @@ public class GooglePlus extends CordovaPlugin {
 		    currentCallback.success(result);
 		} catch (UserRecoverableAuthException ex) {
 		    Log.e(TAG, "Recovering authorization", ex);
-		    final Intent intent = ex.getIntent();
-		    intent.putExtra(AccountManager.KEY_ACCOUNT_NAME, accountName);
-		    cordova.startActivityForResult(GooglePlus.this, intent, REQUEST_AUTH_RECOVER);
+		    cordova.startActivityForResult(GooglePlus.this, ex.getIntent(), REQUEST_AUTH_RECOVER);
 		} catch (IOException ex) {
 		    ex.printStackTrace();
 		    currentCallback.error(ex.getLocalizedMessage());
@@ -127,7 +144,8 @@ public class GooglePlus extends CordovaPlugin {
 		    ex.printStackTrace();
 		    if ("BadUsername".equals(ex.getMessage())) {
 			Log.e(TAG, "Invoked with BadUsername(" + accountName + "). re-select account...", ex);
-			loginToken(null);
+			accountName = null;
+			login();
 		    } else {
 			currentCallback.error(ex.getLocalizedMessage());
 		    }
@@ -139,7 +157,7 @@ public class GooglePlus extends CordovaPlugin {
 	});
     }
 
-    private void disconnect(final String accountName) {
+    private void disconnect() {
 	Log.d(TAG, "Disconnecting with " + accountName);
 	cordova.getThreadPool().execute(new Runnable() {
 	    final GooglePlayServicesClient.ConnectionCallbacks connectionCallbacks = new GooglePlayServicesClient.ConnectionCallbacks() {
@@ -195,8 +213,8 @@ public class GooglePlus extends CordovaPlugin {
 	switch (requestCode) {
 	case REQUEST_PICK_ACCOUNT:
 	    if (resultCode == Activity.RESULT_OK) {
-		final String accountName = intent.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
-		obtainToken(accountName);
+		accountName = intent.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+		obtainToken();
 	    } else {
 		currentCallback.error("No account selected");
 	    }
@@ -204,8 +222,7 @@ public class GooglePlus extends CordovaPlugin {
 
 	case REQUEST_AUTH_RECOVER:
 	    if (resultCode == Activity.RESULT_OK) {
-		final String accountName = intent.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
-		obtainToken(accountName);
+		obtainToken();
 	    } else {
 		currentCallback.error("Cannot authrorize");
 	    }
