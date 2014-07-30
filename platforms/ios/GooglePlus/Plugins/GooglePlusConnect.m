@@ -63,10 +63,9 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
         NSLog(@"Received error: %@", error);
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
     } else {
-        NSString* email = auth.userEmail;
-        NSString* token = auth.accessToken;
-        NSLog(@"Received auth object %@ (%@): %@", auth, email, token);
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:token];
+        NSDictionary* dict = [NSDictionary dictionaryWithObjectsAndKeys:auth.userEmail, @"accountName", auth.accessToken, @"accessToken", nil];
+        NSLog(@"Received auth object %@: %@", auth, dict);
+        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
     }
     [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
 }
