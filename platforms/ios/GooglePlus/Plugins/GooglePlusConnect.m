@@ -9,12 +9,28 @@
 #import "GooglePlusConnect.h"
 #import <GoogleOpenSource/GTLPlusConstants.h>
 #import <GoogleOpenSource/GTMOAuth2Authentication.h>
+#import <GooglePlus/GPPURLHandler.h>
 
 @implementation GooglePlusConnect
 
 @synthesize callbackId;
 
 static NSString* const kClientIdKey = @"GooglePlusClientID";
+
+- (void)handleOpenURL:(NSNotification *)notification
+{
+    
+    NSURL* url = [notification object];
+    
+    NSLog(@"Handling URL:%@", url);
+    
+    if ([url isKindOfClass:[NSURL class]]) {
+        NSString* srcApp = @"com.apple.mobilesafari";
+        id annotation = NULL;
+        NSLog(@"Invoking GPPURLHandler with URL:%@ sourceApplication:%@ annotation:%@", url, srcApp, annotation);
+        [GPPURLHandler handleURL:url sourceApplication:srcApp annotation:annotation];
+    }
+}
 
 - (void)login:(CDVInvokedUrlCommand *)command
 {
