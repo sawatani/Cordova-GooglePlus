@@ -8,12 +8,12 @@
 
 #import "GooglePlusConnect.h"
 #import <GoogleOpenSource/GTLPlusConstants.h>
-#import <GoogleOpenSource/GTMOAuth2Authentication.h>
 #import <GooglePlus/GPPURLHandler.h>
 
 @implementation GooglePlusConnect
 
 @synthesize callbackId;
+@synthesize authrized;
 
 static NSString* const kClientIdKey = @"GooglePlusClientID";
 
@@ -51,6 +51,15 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
     self.callbackId = command.callbackId;
     NSLog(@"Start auth (callback:%@)", command.callbackId);
     
+    if (self.authrized) {
+        int value = [self.authrized.expirationDate timeIntervalSinceNow];
+        NSLog(@"previous authorized expiration left: %d seconds", value);
+        if (value < 600) {
+            NSLog(@"Resetting previous authorized: %@", self.authrized);
+            [self.authrized reset];
+        }
+    }
+    
     GPPSignIn* signIn = [GPPSignIn sharedInstance];
     signIn.clientID = [[[NSBundle mainBundle] infoDictionary] objectForKey:kClientIdKey];
     signIn.actions = [NSArray arrayWithObjects:@"https://schemas.google.com/AddActivity", nil];
@@ -76,29 +85,36 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
 
 - (void)finishedWithAuth:(GTMOAuth2Authentication *)auth error:(NSError *)error
 {
-    CDVPluginResult* result = nil;
     if (error) {
         NSLog(@"Received error: %@", error);
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
+        [self callback:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR]];
     } else {
         NSDictionary* dict = [NSDictionary dictionaryWithObjectsAndKeys:auth.accessToken, @"accessToken", auth.userEmail, @"accountName", nil];
         NSLog(@"Received auth object %@: %@", auth, dict);
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
+        self.authrized = auth;
+        [self callback:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict]];
     }
-    [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
 }
 
 - (void)didDisconnectWithError:(NSError *)error
 {
-    CDVPluginResult* result = nil;
     if (error) {
         NSLog(@"Received error: %@", error);
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
+        [self callback:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR]];
     } else {
         NSLog(@"Disconnected");
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+        [self callback:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK]];
     }
-    [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
+}
+
+- (void)callback:(CDVPluginResult *)result
+{
+    if (self.callbackId) {
+        [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
+        self.callbackId = nil;
+    } else {
+        NSLog(@"Could not callback: %@", result);
+    }
 }
 
 @end
