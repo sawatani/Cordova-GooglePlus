@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="org.fathens.cordova.googleplus" version="0.0.1" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
-    <name>GooglePlus</name>
+<widget id="org.fathens.cordova.googleplusconnect" version="0.0.1" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>GooglePlus Connect</name>
     <description>
         Plugin to connect Google+
     </description>

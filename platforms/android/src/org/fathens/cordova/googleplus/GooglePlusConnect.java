@@ -46,7 +46,7 @@ import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.Scopes;
 import com.google.android.gms.plus.PlusClient;
 
-public class GooglePlus extends CordovaPlugin {
+public class GooglePlusConnect extends CordovaPlugin {
     private static final String TAG = "GooglePlusPlugin";
 
     public static final int REQUEST_PICK_ACCOUNT = 9000;
@@ -124,7 +124,7 @@ public class GooglePlus extends CordovaPlugin {
 		    currentCallback.success(result);
 		} catch (UserRecoverableAuthException ex) {
 		    Log.e(TAG, "Recovering authorization", ex);
-		    cordova.startActivityForResult(GooglePlus.this, ex.getIntent(), REQUEST_AUTH_RECOVER);
+		    cordova.startActivityForResult(GooglePlusConnect.this, ex.getIntent(), REQUEST_AUTH_RECOVER);
 		} catch (IOException ex) {
 		    ex.printStackTrace();
 		    currentCallback.error(ex.getLocalizedMessage());
