@@ -54,7 +54,6 @@ public class GooglePlus extends CordovaPlugin {
     public static final int REQUEST_PCLIENT_RECOVER = 9002;
 
     public static final String ACTION_LOGIN = "login";
-    public static final String ACTION_PUBLISH = "publish";
     public static final String ACTION_DISCONNECT = "disconnect";
 
     private static final String[] scopeUrls = new String[] { Scopes.PLUS_LOGIN,
@@ -80,9 +79,6 @@ public class GooglePlus extends CordovaPlugin {
 	if (action.equals(ACTION_LOGIN)) {
 	    login();
 	    return true;
-	} else if (action.equals(ACTION_PUBLISH)) {
-	    publish();
-	    return true;
 	} else if (action.equals(ACTION_DISCONNECT)) {
 	    disconnect();
 	    return true;
@@ -92,14 +88,6 @@ public class GooglePlus extends CordovaPlugin {
     }
 
     private void login() {
-	signIn();
-    }
-
-    private void publish() {
-	signIn();
-    }
-
-    private void signIn() {
 	if (accountName != null && accountName.length() > 0) {
 	    obtainToken();
 	} else {

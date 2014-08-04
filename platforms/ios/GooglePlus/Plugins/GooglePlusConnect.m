@@ -34,17 +34,6 @@ static NSString* const kClientIdKey = @"GooglePlusClientID";
 
 - (void)login:(CDVInvokedUrlCommand *)command
 {
-    [self signIn:command];
-}
-
-
-- (void)publish:(CDVInvokedUrlCommand *)command
-{
-    [self signIn:command];
-}
-
-- (void)signIn:(CDVInvokedUrlCommand *)command
-{
     id arg = [command argumentAtIndex:0];
     NSLog(@"GooglePlusConnect.login invoked with argument:%@(arguments are ignored)", arg);
     
