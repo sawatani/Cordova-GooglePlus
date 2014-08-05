@@ -20,14 +20,13 @@
     <js-module src="www/js/googlePlusConnect.js" 
     		  name="GooglePlusConnectPlugin" 
     		target="fathens/googlePlusConnectPlugin.js">
-        <clobbers target="window.googlePlusConnectPlugin" />
+        <clobbers target="googlePlusConnectPlugin" />
     </js-module>
     
     <!-- android -->
     <platform name="android">
 
         <dependency id="com.google.playservices" url="https://github.com/wf9a5m75/google-play-services" commit="master" />
-        <dependency id="android.support.v4" />
     
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="GooglePlusConnectPlugin">
