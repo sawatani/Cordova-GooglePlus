@@ -67,7 +67,6 @@ public class GooglePlusConnect extends CordovaPlugin {
     @Override
     public void initialize(final CordovaInterface cordova, final CordovaWebView webView) {
 	super.initialize(cordova, webView);
-	cordova.setActivityResultCallback(this);
 	Log.d(TAG, "Initialized");
     }
 
@@ -176,6 +175,7 @@ public class GooglePlusConnect extends CordovaPlugin {
 		    Log.d(TAG, "PlusClient: onConnectionFailed: " + result);
 		    if (result.hasResolution()) {
 			try {
+			    cordova.setActivityResultCallback(GooglePlusConnect.this);
 			    result.startResolutionForResult(cordova.getActivity(), REQUEST_PCLIENT_RECOVER);
 			} catch (SendIntentException ex) {
 			    pClient.connect();
