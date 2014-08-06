@@ -197,6 +197,7 @@ public class GooglePlusConnect extends CordovaPlugin {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+	super.onActivityResult(requestCode, resultCode, intent);
 	Log.i(TAG, "onActivityResult:" + requestCode);
 	switch (requestCode) {
 	case REQUEST_PICK_ACCOUNT:
