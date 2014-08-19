@@ -10,11 +10,18 @@
 #import <GooglePlus/GPPSignIn.h>
 #import <GoogleOpenSource/GTMOAuth2Authentication.h>
 
+typedef NS_ENUM(NSUInteger, ServiceName) {
+    Login, Profile, Disconnect
+};
+
 @interface GooglePlusConnect : CDVPlugin <GPPSignInDelegate>
 
+@property (nonatomic) ServiceName currentService;
 @property (nonatomic, copy) NSString *callbackId;
 @property (nonatomic, retain) GTMOAuth2Authentication* authrized;
 
 - (void)login:(CDVInvokedUrlCommand*)command;
+- (void)profile:(CDVInvokedUrlCommand *)command;
+- (void)disconnect:(CDVInvokedUrlCommand *)command;
 
 @end

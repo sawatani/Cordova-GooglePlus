@@ -44,7 +44,11 @@ import com.google.android.gms.common.AccountPicker;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.Scopes;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.plus.Plus;
 import com.google.android.gms.plus.PlusClient;
+import com.google.android.gms.plus.model.people.Person;
 
 public class GooglePlusConnect extends CordovaPlugin {
     private static final String TAG = "GooglePlusPlugin";
@@ -52,15 +56,18 @@ public class GooglePlusConnect extends CordovaPlugin {
     public static final int REQUEST_PICK_ACCOUNT = 9000;
     public static final int REQUEST_AUTH_RECOVER = 9001;
     public static final int REQUEST_PCLIENT_RECOVER = 9002;
+    public static final int REQUEST_GCLIENT_RECOVER = 9003;
 
     public static final String ACTION_LOGIN = "login";
     public static final String ACTION_DISCONNECT = "disconnect";
+    public static final String ACTION_PROFILE = "profile";
 
     private static final String[] scopeUrls = new String[] { Scopes.PLUS_LOGIN,
 	    "https://www.googleapis.com/auth/userinfo.email" };
 
     private CallbackContext currentCallback;
     private PlusClient pClient;
+    private GoogleApiClient gClient;
     private String accountName;
     private String[] actions = new String[] { "https://schemas.google.com/AddActivity" };
 
@@ -80,6 +87,9 @@ public class GooglePlusConnect extends CordovaPlugin {
 	    return true;
 	} else if (action.equals(ACTION_DISCONNECT)) {
 	    disconnect();
+	    return true;
+	} else if (action.equals(ACTION_PROFILE)) {
+	    profile();
 	    return true;
 	} else {
 	    return false;
@@ -140,6 +150,62 @@ public class GooglePlusConnect extends CordovaPlugin {
 		    ex.printStackTrace();
 		    currentCallback.error(ex.getLocalizedMessage());
 		}
+	    }
+	});
+    }
+
+    private void profile() {
+	Log.d(TAG, "Getting profile of " + accountName);
+	cordova.getThreadPool().execute(new Runnable() {
+	    @Override
+	    public void run() {
+		gClient = new GoogleApiClient.Builder(cordova.getActivity()).addApi(Plus.API)
+			.addScope(Plus.SCOPE_PLUS_LOGIN).addScope(Plus.SCOPE_PLUS_PROFILE)
+			.addScope(new Scope("https://www.googleapis.com/auth/userinfo.email"))
+			.setAccountName(accountName).build();
+		gClient.registerConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
+
+		    @Override
+		    public void onConnectionSuspended(int reason) {
+			Log.d(TAG, "GoogleApiClient connection suspended: " + reason);
+		    }
+
+		    @Override
+		    public void onConnected(Bundle bundle) {
+			try {
+			    final Person me = Plus.PeopleApi.getCurrentPerson(gClient);
+			    Log.d(TAG, "Current person: " + me);
+			    final String name = me.getDisplayName();
+			    final String avatar = me.getImage().getUrl();
+			    final String userId = me.getId();
+			    final JSONObject result = new JSONObject().put("id", userId).put("email", accountName)
+				    .put("name", name).put("avatar", avatar);
+			    Log.d(TAG, "Callbacking result: " + result);
+			    currentCallback.success(result);
+			} catch (JSONException ex) {
+			    ex.printStackTrace();
+			    currentCallback.error(ex.getLocalizedMessage());
+			}
+		    }
+		});
+		gClient.registerConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
+
+		    @Override
+		    public void onConnectionFailed(ConnectionResult result) {
+			Log.d(TAG, "GoogleApiClient: onConnectionFailed: " + result);
+			if (result.hasResolution()) {
+			    try {
+				cordova.setActivityResultCallback(GooglePlusConnect.this);
+				result.startResolutionForResult(cordova.getActivity(), REQUEST_GCLIENT_RECOVER);
+			    } catch (SendIntentException ex) {
+				pClient.connect();
+			    }
+			} else {
+			    currentCallback.error("PlusClient: Failed to connect");
+			}
+		    }
+		});
+		gClient.connect();
 	    }
 	});
     }
@@ -222,6 +288,14 @@ public class GooglePlusConnect extends CordovaPlugin {
 		pClient.connect();
 	    } else {
 		currentCallback.error("PlusClient: Failed to retry connection");
+	    }
+	    break;
+
+	case REQUEST_GCLIENT_RECOVER:
+	    if (resultCode == Activity.RESULT_OK && pClient != null) {
+		gClient.connect();
+	    } else {
+		currentCallback.error("GoogleApiClient: Failed to retry connection");
 	    }
 	    break;
 
