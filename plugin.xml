@@ -26,7 +26,7 @@
     <!-- android -->
     <platform name="android">
 
-        <dependency id="com.google.playservices" url="https://github.com/wf9a5m75/google-play-services" commit="master" />
+        <dependency id="com.google.playservices" url="https://github.com/sawatani/google-play-services" commit="master" />
     
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="GooglePlusConnectPlugin">
